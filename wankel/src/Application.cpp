@@ -2,6 +2,9 @@
 #include <GLFW/glfw3.h>
 #include <iostream>
 #include <fstream>
+#include "../res/imgui/imgui.h"
+#include "../res/imgui/imgui_impl_glfw.h"
+#include "../res/imgui/imgui_impl_opengl3.h"
 
 
 GLFWwindow* CreateWindow()
@@ -154,6 +157,10 @@ int main(void)
 	if (window == NULL)
 		return -1;
 
+	ImGui::CreateContext();
+	ImGui_ImplGlfw_InitForOpenGL(window, true); // 'window' is your GLFWwindow*
+	ImGui_ImplOpenGL3_Init("#version 430"); // 'glsl_version' is a char* to your GLSL version, e.g., "#version 150"
+
 	glEnable(GL_DEPTH_TEST);
 	sendDataToOpenGL();
 	InstallShaders();
@@ -163,6 +170,21 @@ int main(void)
 	{
 		/* Render here */
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+		// Start the Dear ImGui frame
+		ImGui_ImplOpenGL3_NewFrame();
+		ImGui_ImplGlfw_NewFrame();
+		ImGui::NewFrame();
+
+		// ImGui calls...
+		ImGui::Begin("Hello, world!");
+		ImGui::Text("This is some useful text.");
+		ImGui::End();
+
+		// Rendering
+		ImGui::Render();
+		ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+
 
 		glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_SHORT, 0);
 
