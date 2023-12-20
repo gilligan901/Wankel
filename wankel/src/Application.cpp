@@ -23,9 +23,14 @@ GLFWwindow* CreateWindow()
 
 	if (glewInit() != GLEW_OK)
 	{
-		std::cout << "Error" << std::endl;
+		std::cout << "Error" << '\n';
 		return NULL;
 	}
+
+	//glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+	//glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
+	//glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+	//glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
 
 	return window;
 }
@@ -41,6 +46,49 @@ std::string readShaderCode(const char* fileName)
 	return std::string(
 		std::istreambuf_iterator<char>(meInput),
 		std::istreambuf_iterator<char>());
+}
+
+bool checkStatus(
+	GLuint objectId,
+	PFNGLGETSHADERIVPROC objectPropertyGetterFunc,
+	PFNGLGETSHADERINFOLOGPROC getInfoLogFunc,
+	GLenum statusType)
+{
+	GLint compileStatus;
+	objectPropertyGetterFunc(objectId, statusType, &compileStatus);
+	if (compileStatus != GL_TRUE)
+	{
+		GLint infoLogLength;
+		objectPropertyGetterFunc(objectId, GL_INFO_LOG_LENGTH, &infoLogLength);
+
+		GLchar* buffer = new GLchar[infoLogLength];
+		GLsizei bufferSize;
+		getInfoLogFunc(objectId, infoLogLength, &bufferSize, buffer);
+
+		std::cout << buffer << '\n';
+
+		delete[] buffer;
+		return false;
+	}
+	return true;
+}
+
+bool checkShaderStatus(GLuint shaderId)
+{
+	return checkStatus(
+		shaderId,
+		glGetShaderiv,
+		glGetShaderInfoLog,
+		GL_COMPILE_STATUS);
+}
+
+bool checkProgramStatus(GLuint programId)
+{
+	return checkStatus(
+		programId,
+		glGetProgramiv,
+		glGetProgramInfoLog,
+		GL_LINK_STATUS);
 }
 
 void InstallShaders()
@@ -60,37 +108,44 @@ void InstallShaders()
 	glCompileShader(vertex_shader_id);
 	glCompileShader(fragment_shader_id);
 
-	GLint compileStatus;
-	glGetShaderiv(vertex_shader_id, GL_COMPILE_STATUS, &compileStatus);
-	if (compileStatus != GL_TRUE)
-	{
-		GLint infoLogLength;
-		glGetShaderiv(vertex_shader_id, GL_INFO_LOG_LENGTH, &infoLogLength);
-
-		GLchar* buffer = new GLchar[infoLogLength];
-		GLsizei bufferSize;
-		glGetShaderInfoLog(vertex_shader_id, infoLogLength, &bufferSize, buffer);
-
-		std::cout << buffer << '\n';
-
-		delete[] buffer;
-	}
+	if (!checkShaderStatus(vertex_shader_id) || !checkShaderStatus(fragment_shader_id))
+		return;
 
 	GLuint ProgramID = glCreateProgram();
 	glAttachShader(ProgramID, vertex_shader_id);
 	glAttachShader(ProgramID, fragment_shader_id);
-
 	glLinkProgram(ProgramID);
 
-	glDetachShader(ProgramID, vertex_shader_id);
-	glDetachShader(ProgramID, fragment_shader_id);
-
-	glDeleteShader(vertex_shader_id);
-	glDeleteShader(fragment_shader_id);
+	if (!checkProgramStatus(ProgramID))
+		return;
 
 	glUseProgram(ProgramID);
 }
 
+void sendDataToOpenGL()
+{
+	GLfloat vertices[] =
+	{
+		0.0f, 0.5f, 0.0f, 1.0f, 0.0f, 0.0f, // Vertex 1 (X, Y, Z)
+		-0.5f, -0.5f, 0.0f, 0.0f, 0.5f, 1.0f, // Vertex 2 (X, Y, Z)
+		0.5f, -0.5f, 0.0f, 0.0f, 1.0f, 0.0f, // Vertex 3 (X, Y, Z)
+	};
+
+	GLuint vertexBufferId;
+	glGenBuffers(1, &vertexBufferId);
+	glBindBuffer(GL_ARRAY_BUFFER, vertexBufferId);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+	glEnableVertexAttribArray(0);
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(float) * 6, 0);
+	glEnableVertexAttribArray(1);
+	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(float) * 6, (char*)(3 * sizeof(float)));
+
+	GLushort indices[] = {0, 2, 1};
+	GLuint indexBufferId;
+	glGenBuffers(1, &indexBufferId);
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, indexBufferId);
+	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
+}
 
 int main(void)
 {
@@ -98,12 +153,17 @@ int main(void)
 	if (window == NULL)
 		return -1;
 
+	glEnable(GL_DEPTH_TEST);
+	sendDataToOpenGL();
+	InstallShaders();
 
 	/* Loop until the user closes the window */
 	while (!glfwWindowShouldClose(window))
 	{
 		/* Render here */
-		glClear(GL_COLOR_BUFFER_BIT);
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+		glDrawElements(GL_TRIANGLES, 3, GL_UNSIGNED_SHORT, 0);
 
 		/* Swap front and back buffers */
 		glfwSwapBuffers(window);
