@@ -126,9 +126,10 @@ void sendDataToOpenGL()
 {
 	GLfloat vertices[] =
 	{
-		0.0f, 0.5f, 0.0f, 1.0f, 0.0f, 0.0f, // Vertex 1 (X, Y, Z)
-		-0.5f, -0.5f, 0.0f, 0.0f, 0.5f, 1.0f, // Vertex 2 (X, Y, Z)
-		0.5f, -0.5f, 0.0f, 0.0f, 1.0f, 0.0f, // Vertex 3 (X, Y, Z)
+		0.5f, 0.5f, 0.0f, 0.0f, 0.0f, 1.0f, // Vertex 1 (X, Y, Z)
+		-0.5f, 0.5f, 0.0f, 1.0f, 0.0f, 0.0f, // Vertex 2 (X, Y, Z)
+		-0.5f, -0.5f, 0.0f, 0.0f, 0.0f, 1.0f, // Vertex 3 (X, Y, Z)
+		0.5f, -0.5f, 0.0f, 0.0f, 1.0f, 0.0f, // Vertex 4 (X, Y, Z)
 	};
 
 	GLuint vertexBufferId;
@@ -140,7 +141,7 @@ void sendDataToOpenGL()
 	glEnableVertexAttribArray(1);
 	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(float) * 6, (char*)(3 * sizeof(float)));
 
-	GLushort indices[] = {0, 2, 1};
+	GLushort indices[] = {0, 1, 2, 2, 3, 0};
 	GLuint indexBufferId;
 	glGenBuffers(1, &indexBufferId);
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, indexBufferId);
@@ -163,7 +164,7 @@ int main(void)
 		/* Render here */
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-		glDrawElements(GL_TRIANGLES, 3, GL_UNSIGNED_SHORT, 0);
+		glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_SHORT, 0);
 
 		/* Swap front and back buffers */
 		glfwSwapBuffers(window);
