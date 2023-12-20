@@ -2,12 +2,14 @@
 #include <GLFW/glfw3.h>
 #include <iostream>
 #include <fstream>
+#include <glm/glm.hpp>
 #include "../res/imgui/imgui.h"
 #include "../res/imgui/imgui_impl_glfw.h"
 #include "../res/imgui/imgui_impl_opengl3.h"
+#include "Primatives/ShapeMaker.h"
 
 
-GLFWwindow* CreateWindow()
+GLFWwindow* createWindow()
 {
 	/* Initialize the library */
 	if (!glfwInit())
@@ -94,7 +96,7 @@ bool checkProgramStatus(GLuint programId)
 		GL_LINK_STATUS);
 }
 
-void InstallShaders()
+void installShaders()
 {
 	GLuint vertex_shader_id = glCreateShader(GL_VERTEX_SHADER);
 	GLuint fragment_shader_id = glCreateShader(GL_FRAGMENT_SHADER);
@@ -127,35 +129,49 @@ void InstallShaders()
 
 void sendDataToOpenGL()
 {
-	GLfloat vertices[] =
-	{
-		0.5f, 0.5f, 0.0f, 0.0f, 0.0f, 1.0f, // Vertex 1 (X, Y, Z)
-		-0.5f, 0.5f, 0.0f, 1.0f, 0.0f, 0.0f, // Vertex 2 (X, Y, Z)
-		-0.5f, -0.5f, 0.0f, 0.0f, 0.0f, 1.0f, // Vertex 3 (X, Y, Z)
-		0.5f, -0.5f, 0.0f, 0.0f, 1.0f, 0.0f, // Vertex 4 (X, Y, Z)
-	};
+	ShapeData triangle = ShapeMaker::makeTriangle();
 
 	GLuint vertexBufferId;
 	glGenBuffers(1, &vertexBufferId);
 	glBindBuffer(GL_ARRAY_BUFFER, vertexBufferId);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+	glBufferData(GL_ARRAY_BUFFER, triangle.vertexBufferSize(), triangle.vertices, GL_STATIC_DRAW);
 	glEnableVertexAttribArray(0);
 	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(float) * 6, 0);
 	glEnableVertexAttribArray(1);
 	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(float) * 6, (char*)(3 * sizeof(float)));
 
-	GLushort indices[] = {0, 1, 2, 2, 3, 0};
 	GLuint indexBufferId;
 	glGenBuffers(1, &indexBufferId);
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, indexBufferId);
-	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
+	glBufferData(GL_ELEMENT_ARRAY_BUFFER, triangle.indexBufferSize(), triangle.indices, GL_STATIC_DRAW);
+	triangle.cleanup();
+}
+
+void drawImGui()
+{
+	// Start the Dear ImGui frame
+	ImGui_ImplOpenGL3_NewFrame();
+	ImGui_ImplGlfw_NewFrame();
+	ImGui::NewFrame();
+
+	// ImGui calls...
+	ImGui::Begin("Hello, world!");
+	ImGui::Text("This is some useful text.");
+	if (ImGui::Button("Button"))
+		std::cout << "Button pressed" << '\n';
+	ImGui::End();
+
+	// Rendering
+	ImGui::Render();
+	ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 }
 
 int main(void)
 {
-	GLFWwindow* window = CreateWindow();
+	GLFWwindow* window = createWindow();
 	if (window == NULL)
 		return -1;
+	int width, height;
 
 	ImGui::CreateContext();
 	ImGui_ImplGlfw_InitForOpenGL(window, true); // 'window' is your GLFWwindow*
@@ -163,7 +179,7 @@ int main(void)
 
 	glEnable(GL_DEPTH_TEST);
 	sendDataToOpenGL();
-	InstallShaders();
+	installShaders();
 
 	/* Loop until the user closes the window */
 	while (!glfwWindowShouldClose(window))
@@ -171,22 +187,11 @@ int main(void)
 		/* Render here */
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-		// Start the Dear ImGui frame
-		ImGui_ImplOpenGL3_NewFrame();
-		ImGui_ImplGlfw_NewFrame();
-		ImGui::NewFrame();
-
-		// ImGui calls...
-		ImGui::Begin("Hello, world!");
-		ImGui::Text("This is some useful text.");
-		ImGui::End();
-
-		// Rendering
-		ImGui::Render();
-		ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
-
-
+		glfwGetWindowSize(window, &width, &height);
+		glViewport(0, 0, width, height);
 		glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_SHORT, 0);
+
+		//drawImGui();
 
 		/* Swap front and back buffers */
 		glfwSwapBuffers(window);
