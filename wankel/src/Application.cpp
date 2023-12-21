@@ -9,6 +9,11 @@
 #include "Primatives/ShapeMaker.h"
 
 
+GLuint programId;
+float red = 0.0f;
+float green = 0.0f;
+float blue = 0.0f;
+
 GLFWwindow* createWindow()
 {
 	/* Initialize the library */
@@ -116,15 +121,15 @@ void installShaders()
 	if (!checkShaderStatus(vertex_shader_id) || !checkShaderStatus(fragment_shader_id))
 		return;
 
-	GLuint ProgramID = glCreateProgram();
-	glAttachShader(ProgramID, vertex_shader_id);
-	glAttachShader(ProgramID, fragment_shader_id);
-	glLinkProgram(ProgramID);
+	programId = glCreateProgram();
+	glAttachShader(programId, vertex_shader_id);
+	glAttachShader(programId, fragment_shader_id);
+	glLinkProgram(programId);
 
-	if (!checkProgramStatus(ProgramID))
+	if (!checkProgramStatus(programId))
 		return;
 
-	glUseProgram(ProgramID);
+	glUseProgram(programId);
 }
 
 void sendDataToOpenGL()
@@ -157,6 +162,9 @@ void drawImGui()
 	// ImGui calls...
 	ImGui::Begin("Hello, world!");
 	ImGui::Text("This is some useful text.");
+	ImGui::SliderFloat("Red", &red, 0.0f, 1.0f);
+	ImGui::SliderFloat("Green", &green, 0.0f, 1.0f);
+	ImGui::SliderFloat("Blue", &blue, 0.0f, 1.0f);
 	if (ImGui::Button("Button"))
 		std::cout << "Button pressed" << '\n';
 	ImGui::End();
@@ -189,9 +197,14 @@ int main(void)
 
 		glfwGetWindowSize(window, &width, &height);
 		glViewport(0, 0, width, height);
+
+		glm::vec3 dominatingColour(red, green, blue);
+		GLint dominatingColourUniformLocation = glGetUniformLocation(programId, "dominatingColour");
+		glUniform3fv(dominatingColourUniformLocation, 1, &dominatingColour[0]);
+
 		glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_SHORT, 0);
 
-		//drawImGui();
+		drawImGui();
 
 		/* Swap front and back buffers */
 		glfwSwapBuffers(window);
