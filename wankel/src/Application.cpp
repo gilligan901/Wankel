@@ -11,9 +11,7 @@
 
 GLuint numIndices;
 GLuint programId;
-float red = -0.0f;
-float green = 0.0f;
-float blue = -3.0f;
+float z = -3.0f;
 double frameTime = 0;
 double fps = 0;
 
@@ -167,11 +165,7 @@ void drawImGui()
 	ImGui::Begin("Hello, world!");
 	ImGui::Text("Frame Time: %.4f ms", frameTime * 1000.0);
 	ImGui::Text("FPS: %.2f", fps);
-	ImGui::SliderFloat("Red", &red, -10.0f, 10.0f);
-	ImGui::SliderFloat("Green", &green, -10.0f, 10.0f);
-	ImGui::SliderFloat("Blue", &blue, -10.0f, 10.0f);
-	if (ImGui::Button("Button"))
-		std::cout << "Button pressed" << '\n';
+	ImGui::SliderFloat("Red", &z, 0.0f, -10.0f);
 	ImGui::End();
 
 	// Rendering
@@ -208,22 +202,25 @@ int main(void)
 			GLint dominatingColourUniformLocation = glGetUniformLocation(programId, "dominatingColour");
 			glUniform3fv(dominatingColourUniformLocation, 1, &dominatingColour[0]);*/
 
-		glm::mat4 modelTransformMatrix = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, -3.0f));
-		glm::mat4 projectionMatrix = glm::perspective(60.0f, (float)width / height, 0.1f, 10.0f);
+		glm::mat4 modelTransformMatrix = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, z));
+		glm::mat4 rotationMatrix = glm::rotate(glm::mat4(1.0f), (float)glfwGetTime(), glm::vec3(5.0f, 1.0f, 1.0f));
+		glm::mat4 projectionMatrix = glm::perspective(45.0f, (float)width / height, 0.1f, 10.0f);
 		GLuint modelTransformMatrixUniformLocation = glGetUniformLocation(programId, "modelTransformMatrix");
+		GLuint rotationMatrixUniformLocation = glGetUniformLocation(programId, "rotationMatrix");
 		GLuint projectionMatrixUniformLocation = glGetUniformLocation(programId, "projectionMatrix");
 
 		glUniformMatrix4fv(modelTransformMatrixUniformLocation, 1, GL_FALSE, &modelTransformMatrix[0][0]);
+		glUniformMatrix4fv(rotationMatrixUniformLocation, 1, GL_FALSE, &rotationMatrix[0][0]);
 		glUniformMatrix4fv(projectionMatrixUniformLocation, 1, GL_FALSE, &projectionMatrix[0][0]);
 
 		glDrawElements(GL_TRIANGLES, numIndices, GL_UNSIGNED_SHORT, 0);
 
-		/*	double currentFrameTime = glfwGetTime();
-			frameTime = currentFrameTime - lastFrameTime;
-			lastFrameTime = currentFrameTime;
-			fps = 1.0 / frameTime;
-	
-			drawImGui();*/
+		double currentFrameTime = glfwGetTime();
+		frameTime = currentFrameTime - lastFrameTime;
+		lastFrameTime = currentFrameTime;
+		fps = 1.0 / frameTime;
+
+		drawImGui();
 
 		/* Swap front and back buffers */
 		glfwSwapBuffers(window);
