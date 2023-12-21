@@ -202,16 +202,15 @@ int main(void)
 			GLint dominatingColourUniformLocation = glGetUniformLocation(programId, "dominatingColour");
 			glUniform3fv(dominatingColourUniformLocation, 1, &dominatingColour[0]);*/
 
-		glm::mat4 modelTransformMatrix = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, z));
+		glm::mat4 translateMatrix = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, z));
 		glm::mat4 rotationMatrix = glm::rotate(glm::mat4(1.0f), (float)glfwGetTime(), glm::vec3(5.0f, 1.0f, 1.0f));
 		glm::mat4 projectionMatrix = glm::perspective(45.0f, (float)width / height, 0.1f, 10.0f);
-		GLuint modelTransformMatrixUniformLocation = glGetUniformLocation(programId, "modelTransformMatrix");
-		GLuint rotationMatrixUniformLocation = glGetUniformLocation(programId, "rotationMatrix");
-		GLuint projectionMatrixUniformLocation = glGetUniformLocation(programId, "projectionMatrix");
 
-		glUniformMatrix4fv(modelTransformMatrixUniformLocation, 1, GL_FALSE, &modelTransformMatrix[0][0]);
-		glUniformMatrix4fv(rotationMatrixUniformLocation, 1, GL_FALSE, &rotationMatrix[0][0]);
-		glUniformMatrix4fv(projectionMatrixUniformLocation, 1, GL_FALSE, &projectionMatrix[0][0]);
+		glm::mat4 fullTransformMatrix = projectionMatrix * translateMatrix * rotationMatrix;
+
+		GLuint modelTransformMatrixUniformLocation = glGetUniformLocation(programId, "fullTransformMatrix");
+
+		glUniformMatrix4fv(modelTransformMatrixUniformLocation, 1, GL_FALSE, &fullTransformMatrix[0][0]);
 
 		glDrawElements(GL_TRIANGLES, numIndices, GL_UNSIGNED_SHORT, 0);
 
