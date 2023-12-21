@@ -3,16 +3,19 @@
 #include <iostream>
 #include <fstream>
 #include <glm/glm.hpp>
-#include "../res/imgui/imgui.h"
-#include "../res/imgui/imgui_impl_glfw.h"
-#include "../res/imgui/imgui_impl_opengl3.h"
+#include <glm/gtc/matrix_transform.hpp>
+#include "imgui/imgui.h"
+#include "imgui/imgui_impl_glfw.h"
+#include "imgui/imgui_impl_opengl3.h"
 #include "Primatives/ShapeMaker.h"
 
-
+GLuint numIndices;
 GLuint programId;
-float red = 0.0f;
+float red = -0.0f;
 float green = 0.0f;
-float blue = 0.0f;
+float blue = -3.0f;
+double frameTime = 0;
+double fps = 0;
 
 GLFWwindow* createWindow()
 {
@@ -134,7 +137,7 @@ void installShaders()
 
 void sendDataToOpenGL()
 {
-	ShapeData triangle = ShapeMaker::makeTriangle();
+	ShapeData triangle = ShapeMaker::makeCube();
 
 	GLuint vertexBufferId;
 	glGenBuffers(1, &vertexBufferId);
@@ -149,6 +152,7 @@ void sendDataToOpenGL()
 	glGenBuffers(1, &indexBufferId);
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, indexBufferId);
 	glBufferData(GL_ELEMENT_ARRAY_BUFFER, triangle.indexBufferSize(), triangle.indices, GL_STATIC_DRAW);
+	numIndices = triangle.numIndices;
 	triangle.cleanup();
 }
 
@@ -161,10 +165,11 @@ void drawImGui()
 
 	// ImGui calls...
 	ImGui::Begin("Hello, world!");
-	ImGui::Text("This is some useful text.");
-	ImGui::SliderFloat("Red", &red, 0.0f, 1.0f);
-	ImGui::SliderFloat("Green", &green, 0.0f, 1.0f);
-	ImGui::SliderFloat("Blue", &blue, 0.0f, 1.0f);
+	ImGui::Text("Frame Time: %.4f ms", frameTime * 1000.0);
+	ImGui::Text("FPS: %.2f", fps);
+	ImGui::SliderFloat("Red", &red, -10.0f, 10.0f);
+	ImGui::SliderFloat("Green", &green, -10.0f, 10.0f);
+	ImGui::SliderFloat("Blue", &blue, -10.0f, 10.0f);
 	if (ImGui::Button("Button"))
 		std::cout << "Button pressed" << '\n';
 	ImGui::End();
@@ -189,6 +194,7 @@ int main(void)
 	sendDataToOpenGL();
 	installShaders();
 
+	double lastFrameTime = glfwGetTime();
 	/* Loop until the user closes the window */
 	while (!glfwWindowShouldClose(window))
 	{
@@ -198,13 +204,26 @@ int main(void)
 		glfwGetWindowSize(window, &width, &height);
 		glViewport(0, 0, width, height);
 
-		glm::vec3 dominatingColour(red, green, blue);
-		GLint dominatingColourUniformLocation = glGetUniformLocation(programId, "dominatingColour");
-		glUniform3fv(dominatingColourUniformLocation, 1, &dominatingColour[0]);
+		/*	glm::vec3 dominatingColour(1.0f, 0.0f, 0.0f);
+			GLint dominatingColourUniformLocation = glGetUniformLocation(programId, "dominatingColour");
+			glUniform3fv(dominatingColourUniformLocation, 1, &dominatingColour[0]);*/
 
-		glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_SHORT, 0);
+		glm::mat4 modelTransformMatrix = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, -3.0f));
+		glm::mat4 projectionMatrix = glm::perspective(60.0f, (float)width / height, 0.1f, 10.0f);
+		GLuint modelTransformMatrixUniformLocation = glGetUniformLocation(programId, "modelTransformMatrix");
+		GLuint projectionMatrixUniformLocation = glGetUniformLocation(programId, "projectionMatrix");
 
-		drawImGui();
+		glUniformMatrix4fv(modelTransformMatrixUniformLocation, 1, GL_FALSE, &modelTransformMatrix[0][0]);
+		glUniformMatrix4fv(projectionMatrixUniformLocation, 1, GL_FALSE, &projectionMatrix[0][0]);
+
+		glDrawElements(GL_TRIANGLES, numIndices, GL_UNSIGNED_SHORT, 0);
+
+		/*	double currentFrameTime = glfwGetTime();
+			frameTime = currentFrameTime - lastFrameTime;
+			lastFrameTime = currentFrameTime;
+			fps = 1.0 / frameTime;
+	
+			drawImGui();*/
 
 		/* Swap front and back buffers */
 		glfwSwapBuffers(window);
