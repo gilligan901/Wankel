@@ -8,130 +8,15 @@
 #include "imgui/imgui_impl_glfw.h"
 #include "imgui/imgui_impl_opengl3.h"
 #include "Primatives/ShapeMaker.h"
+#include "Camera.h"
+#include "Shader.h"
+#include "Window.h"
 
 GLuint numIndices;
 GLuint programId;
 float z = -3.0f;
 double frameTime = 0;
 double fps = 0;
-
-GLFWwindow* createWindow()
-{
-	/* Initialize the library */
-	if (!glfwInit())
-		return NULL;
-
-	/* Create a windowed mode window and its OpenGL context */
-	GLFWwindow* window = glfwCreateWindow(640, 480, "Hello World", NULL, NULL);
-	if (!window)
-	{
-		glfwTerminate();
-		return NULL;
-	}
-
-	/* Make the window's context current */
-	glfwMakeContextCurrent(window);
-
-	if (glewInit() != GLEW_OK)
-	{
-		std::cout << "Error" << '\n';
-		return NULL;
-	}
-
-	//glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
-	//glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
-	//glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-	//glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
-
-	return window;
-}
-
-std::string readShaderCode(const char* fileName)
-{
-	std::ifstream meInput(fileName);
-	if (!meInput.good())
-	{
-		std::cout << "File failed to load..." << fileName;
-		exit(1);
-	}
-	return std::string(
-		std::istreambuf_iterator<char>(meInput),
-		std::istreambuf_iterator<char>());
-}
-
-bool checkStatus(
-	GLuint objectId,
-	PFNGLGETSHADERIVPROC objectPropertyGetterFunc,
-	PFNGLGETSHADERINFOLOGPROC getInfoLogFunc,
-	GLenum statusType)
-{
-	GLint compileStatus;
-	objectPropertyGetterFunc(objectId, statusType, &compileStatus);
-	if (compileStatus != GL_TRUE)
-	{
-		GLint infoLogLength;
-		objectPropertyGetterFunc(objectId, GL_INFO_LOG_LENGTH, &infoLogLength);
-
-		GLchar* buffer = new GLchar[infoLogLength];
-		GLsizei bufferSize;
-		getInfoLogFunc(objectId, infoLogLength, &bufferSize, buffer);
-
-		std::cout << buffer << '\n';
-
-		delete[] buffer;
-		return false;
-	}
-	return true;
-}
-
-bool checkShaderStatus(GLuint shaderId)
-{
-	return checkStatus(
-		shaderId,
-		glGetShaderiv,
-		glGetShaderInfoLog,
-		GL_COMPILE_STATUS);
-}
-
-bool checkProgramStatus(GLuint programId)
-{
-	return checkStatus(
-		programId,
-		glGetProgramiv,
-		glGetProgramInfoLog,
-		GL_LINK_STATUS);
-}
-
-void installShaders()
-{
-	GLuint vertex_shader_id = glCreateShader(GL_VERTEX_SHADER);
-	GLuint fragment_shader_id = glCreateShader(GL_FRAGMENT_SHADER);
-
-
-	const GLchar* adapter[1];
-	std::string temp = readShaderCode("./res/shaders/Vertex.glsl");
-	adapter[0] = temp.c_str();
-	glShaderSource(vertex_shader_id, 1, adapter, NULL);
-	temp = readShaderCode("./res/shaders/Fragment.glsl");
-	adapter[0] = temp.c_str();
-	glShaderSource(fragment_shader_id, 1, adapter, NULL);
-
-	glCompileShader(vertex_shader_id);
-	glCompileShader(fragment_shader_id);
-
-	if (!checkShaderStatus(vertex_shader_id) || !checkShaderStatus(fragment_shader_id))
-		return;
-
-	programId = glCreateProgram();
-	glAttachShader(programId, vertex_shader_id);
-	glAttachShader(programId, fragment_shader_id);
-	glLinkProgram(programId);
-
-	if (!checkProgramStatus(programId))
-		return;
-
-	glUseProgram(programId);
-}
 
 void sendDataToOpenGL()
 {
@@ -165,7 +50,7 @@ void drawImGui()
 	ImGui::Begin("Hello, world!");
 	ImGui::Text("Frame Time: %.4f ms", frameTime * 1000.0);
 	ImGui::Text("FPS: %.2f", fps);
-	ImGui::SliderFloat("Red", &z, 0.0f, -10.0f);
+	ImGui::SliderFloat("z", &z, 0.0f, -10.0f);
 	ImGui::End();
 
 	// Rendering
@@ -175,44 +60,52 @@ void drawImGui()
 
 int main(void)
 {
-	GLFWwindow* window = createWindow();
-	if (window == NULL)
+	Window window(800, 600, "Wankel");
+	if (!window.Initialise())
+	{
 		return -1;
-	int width, height;
+	}
+
+	Camera camera(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f), &window);
 
 	ImGui::CreateContext();
-	ImGui_ImplGlfw_InitForOpenGL(window, true); // 'window' is your GLFWwindow*
+	ImGui_ImplGlfw_InitForOpenGL(window.GetGLWindow(), true); // 'window' is your GLFWwindow*
 	ImGui_ImplOpenGL3_Init("#version 430"); // 'glsl_version' is a char* to your GLSL version, e.g., "#version 150"
 
 	glEnable(GL_DEPTH_TEST);
 	sendDataToOpenGL();
-	installShaders();
+	Shader shader("./res/shaders/Vertex.glsl", "./res/shaders/Fragment.glsl");
+	shader.Bind();
 
 	double lastFrameTime = glfwGetTime();
 	/* Loop until the user closes the window */
-	while (!glfwWindowShouldClose(window))
+	while (!window.ShouldClose())
 	{
 		/* Render here */
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-		glfwGetWindowSize(window, &width, &height);
-		glViewport(0, 0, width, height);
+		camera.Inputs();
 
 		/*	glm::vec3 dominatingColour(1.0f, 0.0f, 0.0f);
 			GLint dominatingColourUniformLocation = glGetUniformLocation(programId, "dominatingColour");
 			glUniform3fv(dominatingColourUniformLocation, 1, &dominatingColour[0]);*/
 
-		glm::mat4 translateMatrix = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, z));
-		glm::mat4 rotationMatrix = glm::rotate(glm::mat4(1.0f), (float)glfwGetTime(), glm::vec3(5.0f, 1.0f, 1.0f));
-		glm::mat4 projectionMatrix = glm::perspective(45.0f, (float)width / height, 0.1f, 10.0f);
+		glm::mat4 worldToViewMatrix = camera.GetProjectionViewMatrix();
+		glm::mat4 translateMatrix = glm::translate(worldToViewMatrix, glm::vec3(0.0f, 0.0f, z));
+		glm::mat4 fullTransformMatrix = glm::rotate(translateMatrix, (float)glfwGetTime(), glm::vec3(5.0f, 1.0f, 1.0f));
 
-		glm::mat4 fullTransformMatrix = projectionMatrix * translateMatrix * rotationMatrix;
-
-		GLuint modelTransformMatrixUniformLocation = glGetUniformLocation(programId, "fullTransformMatrix");
-
-		glUniformMatrix4fv(modelTransformMatrixUniformLocation, 1, GL_FALSE, &fullTransformMatrix[0][0]);
+		shader.SetUniformMat4f("fullTransformMatrix", fullTransformMatrix);
 
 		glDrawElements(GL_TRIANGLES, numIndices, GL_UNSIGNED_SHORT, 0);
+
+		worldToViewMatrix = camera.GetProjectionViewMatrix();
+		translateMatrix = glm::translate(worldToViewMatrix, glm::vec3(5.0f, 0.0f, z));
+		fullTransformMatrix = glm::rotate(translateMatrix, (float)glfwGetTime(), glm::vec3(1.0f, 8.0f, 2.0f));
+
+		shader.SetUniformMat4f("fullTransformMatrix", fullTransformMatrix);
+
+		glDrawElements(GL_TRIANGLES, numIndices, GL_UNSIGNED_SHORT, 0);
+
 
 		double currentFrameTime = glfwGetTime();
 		frameTime = currentFrameTime - lastFrameTime;
@@ -222,10 +115,10 @@ int main(void)
 		drawImGui();
 
 		/* Swap front and back buffers */
-		glfwSwapBuffers(window);
+		window.SwapBuffers();
 
 		/* Poll for and process events */
-		glfwPollEvents();
+		window.PollEvents();
 	}
 
 	glfwTerminate();
